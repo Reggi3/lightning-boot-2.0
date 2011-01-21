@@ -11,7 +11,7 @@ check_vars
 
 set_standard_opts $*
 
-pushd $PROJECT_PATH/LB-1.5/
+pushd $PROJECT_PATH/lightning-boot-2.0/
 
 if [ "$CLEAN" == "1" ]; then
 	make clean
