@@ -1,0 +1,123 @@
+Lightning-boot 1.6
+
+Some changes have been made to lightning-boot so I thought a new version number was appropriate :)
+The changes came about due to new requirements for booting different kernels from different sources now that we can boot a didj entirely from SD (explorer kernel and rootfs) or combinations of booting the didj/explorer kernel from nand and rootfs from SD.
+
+
+== Nand and SD partition layout == 
+
+Through testing I now have 2 kernels on my didj, a standard 2.6.20 didj kernel and an SD based explorer 2.6.31 kernel, both burnt to the nand, the basic layout of my didj nand and sd partitions is as follows:
+
+ lightning-boot partition on mtdblock0
+ Atomic boot flags partition mtdblock1
+ MFGDATA partition on mtdblock2
+ Didj Kernel partition on mtdblock3
+ Didj Rootfs0 partition on mtdblock4
+ Explorer Kernel1 partition on mtdblock5
+ Didj Rootfs1 partition on mtdblock6
+
+all other partitions on the nand are standard, as you can see the layout itself hasn't changed per say, I just happen to have the explorer kernel burnt to the kernel1 partition.
+
+now the SD card layout, its pretty simple:
+Kernel and settings partition on the VFAT (first) partition on the SD card
+rootfs on the ext3 partition on the SD card
+
+The kernel partition is vfat, lb likes it to be first, this is where you can put your zimages, any update files and the cmdline settings file is stored here (more about that later).
+
+== New options and the SD kernels ==
+
+now you know the expected layout of partitions I'll explain the relationship between lightning-boots new options and booting everything :)
+
+here is the list of options you are now faced with when you boot with 1.6:
+
+ Boot from NAND normally
+ Boot from NAND with SD Kernel and Rootfs
+ Boot from NAND with custom cmdline
+ Download via Xmodem @115200
+ Load u-boot.bin from SD
+ load zImage from SD
+ load lightning boot from SD
+ 
+ autoboot zimage from SD
+
+As you can see there are a couple of additions, the behaviour of 'Boot from NAND normally' has also changed, here's a rundown of what the new/changed options do.
+
+== Boot from NAND normally ==
+
+The way you used to use this option was via setting the /flags/rootfs file to contain the rootfs that you wanted to boot and by the same token the kernel that it would use, for instance, running the following on the cmdline:
+
+ echo RFS1 > /flags/rootfs
+ reboot
+
+Would allow you to reboot into the kernel on mtdblock5 and the rootfs on mtdblock6, as you can see from the nand layout above that would probably cause complications now trying to boot an explorer kernel with didj rootfs.  I have made this option react to RFS0/RFS1 flags for the rootfs only, you still get the flexibility of running 2 didj rootfs partitions but from the same kernel (kernel0).
+
+== Boot from NAND with SD Kernel and Rootfs ==
+
+Since making my 'boot kernel and rootfs entirely from SD' hack I have gone one step further in burning the explorer kernel to the didj nand on kernel1 partition, so this option gives you similar functionality to the nand option above for didj kernels, you set the rootfs in exactly the same way as on the didj except you use RFS2/RFS3 to set which way you want to boot the explorer kernel.
+
+Be aware that at this present time the SD rootfs is on a single partition, so whilst you have RFS2/RFS3 you only have a single rootfs, so why bother with RFS3 I hear you cry?  Simple answer is that it allows you to choose between 2 kernel boot cmdline configurations (hardcoded into lightning boot, see include/board.h), I have RFS3 setup with debug=1 in the cmdline, this gives feedback to the console (RFS2 boot is almost silent).  Having RFS3 also allows us to expand things in the future if for instance you want to dual-boot from SD.
+
+== Boot from NAND with custom cmdline ==
+
+During the testing of the SD kernel and rootfs I only needed to make minor changes to the cmdline, this required me to recompile the kernel or mess around in u-boot. NOT ANYMORE :)
+
+This option allows you to boot the explorer kernel on kernel1 using custom a custom boot cmdline read in from a file on the vfat partition on the SD card, the file is called 'cmdline' and can contain a cmdline with max.255 chars.
+
+== Load zImage from SD ==
+
+This option hasn't actually changed but it should still be explained, fairly obvious from its name that it boots a zImage from the SD card, this option differs from the rest because it actually uses the kernels built in cmdline options (the first 2 options use hardcoded cmdline options in include/board.h in the LB sources).
+
+You would use this option to boot the didj using a 2.6.20 kernel and rfs0/rfs1 partitions, or if you booted an explorer kernel with my SD rootfs hacks enabled it would boot the entire kernel and rootfs from the SD card.
+
+== Load lightning boot from SD ==
+
+This option might seem a bit odd, why would you want to load lightning boot from lightning boot?  One simple reason, when you're doing dev work on lightning boot it makes sense to not have to flash it to nand constantly.
+
+It's pretty simple to use, get a copy of lightning-boot.bin, rename it lb.bin (petit fat fs only seems to like 8.3 file naming) and put it on the fat partition of your SD card.  This option currently only works from first run of lightning boot, for example, when you first power the didj on or after a reboot this option will work.
+
+If you've already used the option and try to load lightning boot from the newly loaded lightning boot it will overwrite itself and crash.  When lightning boot first loads its put in 0x00000000 in ram by the lf1000 internal bootstrap code.
+
+Lightning boot loads everything at 0x01000000, loading lightning boot at 0x01000000 and then trying to load anything else will cause it to lightning boot to load the binary over itself and crash, so loading of lightning boot from within itself is done at 0x00800000, this is why it currently works the first time through. This will be addressed in a future update, although its fairly unlikely that you'll need to reload lightning boot 3 times without going into the kernel.
+
+
+== Autoboot zImage from SD ==
+
+You may have noticed this this feature doesn't appear on the menu itself.  To use the feature simply create an empty file called autoboot on the fat partition, lightning boot will automatically boot the zImage from SD, to disable this feature simply delete the file from the fat partition.
+
+== How does all this fit together ==
+
+We now have similar flexibility to boot a 2.6.20 kernel with either Didj root filesystem as you normally would with LB1.4/1.5.
+
+We have the ability to burn a modified 2.6.31 explorer kernel to your nand that boots its root filesystem from SD, you also have a debug mode that it will boot into, so that gives you similar functionality to option 1 and the fastest possible boot time.
+
+We can now test custom cmdline configs for 2.6.31 kernels burnt to nand, this allows for faster development times as the vfat partition can easily be accessed to allow you to quickly change the boot cmdline.
+
+The vfat partition access allows you to update the kernel and/or lightning-boot quickly and easily without having to remove the SD card.  To give you some idea, it takes around 10seconds to compile the lightning boot, upload it to the didj, flash and reboot into the new lightning boot.
+
+We now have the ability to completely boot from SD card, this means that you can safely test a kernel without EVER having to touch your nand (apart from the lightning-boot update itself of course).
+
+We now have better recovery options, booting entirely from SD means that failed nand is no longer an issue, as long as UART boot works you can boot a didj even if the the nand is totally trashed, using micromon and lb1.6(untested).
+
+Now that we can load lightning boot from within itself we can test lightning boot updates without having to burn to nand until we are satisfied that it works properly, this has the obvious advantage of not needing uboot to recover from failed code changes and less nand write cycles.
+
+It also gives us the opportunity to start testing emerald boot in the same manner by simply renaming emerald-boot.bin to lb.bin on the sd card.  I'll probably add another menu option for loading emerald boot in its own right in the near future.
+
+Lastly, now that both the didj and explorer can use the same kernel and mostly the same rootfs we can push development for both machines in the same direction with minimal impact.
+
+== Anything I've missed? ==
+
+Yeah, probably, there wasn't much of a plan for lb1.6, however I think the options I've chosen and implemented are reasonable for now.  I will probably add a couple more options, 'custom cmdline for didj kernel' and 'custom cmdline for zImage from SD' seem like sensible additions.  
+
+I've made this version of lightning-boot more geared towards the 2.6.31 explorer kernel, if you are just using normal didj kernels and rootfs lightning-boot 1.6 probably isn't for you :)
+
+Now that we have full access to a 2.6.31 kernel and rootfs on a didj we can all move up to the much better kernel, so the didj and explorer development can take the same path, apart from usb host, reduced ram and touchscreen they are essentially the same machine.
+
+
+
+NO WARRANTY implied or given, if it breaks your stuff, I want pictures :)  I have tested lightning-boot 1.6 on 2 didj's so far, neither have had any issues with losing data, all partitions are sound.
+
+it would probably be sensible at some point in the future if you are SD booting to create a third partition for rootfs recovery/updates/general linux filesystem based storage, I plan to add this myself to a fuller tutorial in the future, this would give much more flexibility over the vfat partition which has the obvious windows file limiations seen on linux.
+
+lightning-boot has increased in size, best burnt to nand, its now > 16KB so it can no longer be used via the normal uart boot method, however, using jkents excellent micromon you shouldn't have any issues uart booting it that way instead.
+
+

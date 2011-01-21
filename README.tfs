@@ -1,0 +1,21 @@
+TFS (table file system) is a very basic raw NAND layout used by lightning-boot
+to find files in the kernel.bin image while skipping bad blocks as needed.  The
+organization for this is as follows:
+
+- A 'summary' is written to the first usable erase block.  It contains a header
+  of two 32-bit fields:
+
+  [0x12345678][num_files]
+
+  followed by a list of num_files entries formatted as a series of:
+
+  [file_name][num_blocks]
+
+  Where file_name is an ASCII string of up to 64 characters, including the NULL
+  termination.  The string is padded until num_blocks.  num_blocks is a 32-bit
+  unsigned integer representing the number of erase blocks that must be read
+  to retrieve the data for the file.
+
+- The next erase block, and all subsequent blocks in the kernel partition are
+  assumed to have file data corresponding to the summary.  Bad blocks are 
+  skipped and are not included in the block count.

@@ -1,0 +1,9 @@
+         Dirent     node at 0x00000000, totlen 0x00000030, #pino     1, version     0, #ino         2, nsize        8, name main_app
+         Inode      node at 0x00000030, totlen 0x00000044, #ino      2, version     1, isize        0, csize        0, dsize        0, offset        0
+         Dirent     node at 0x00000074, totlen 0x0000002e, #pino     1, version     1, #ino         3, nsize        6, name mfcart
+         Inode      node at 0x000000a4, totlen 0x00000044, #ino      3, version     1, isize        0, csize        0, dsize        0, offset        0
+         Dirent     node at 0x000000e8, totlen 0x0000002e, #pino     1, version     2, #ino         4, nsize        6, name rootfs
+         Inode      node at 0x00000118, totlen 0x00000049, #ino      4, version     1, isize        5, csize        5, dsize        5, offset        0
+         Dirent     node at 0x00000164, totlen 0x00000038, #pino     1, version     3, #ino         5, nsize       16, name usb_mass_storage
+         Inode      node at 0x0000019c, totlen 0x0000004d, #ino      5, version     1, isize        9, csize        9, dsize        9, offset        0
+Empty space: 130580, dirty space: 0

@@ -1,0 +1,79 @@
+lightning-boot -- Lightning Platform LF1000 first-stage NAND Flash Bootloader
+Andrey Yurovsky <andrey@cozybit.com>
+
+################
+# introduction #
+################
+
+This bootloader includes basic NAND Flash support (with hardware ECC), LCD 
+controller support, and read-only JFFS2 file system support.  A polling UART 
+driver is included for debugging purposes.
+
+lightning-boot's task is to:
+        0) Bootstrap itself: the hardware loads 0x800 of lightning-boot, and
+           lightning-boot then loads the rest.
+        1) Enable system VCC and perform some basic CPU initialization.
+        2) Read which kernel image to boot and the kernel command line 
+           arguments to use.
+	3) Read a splash screen into memory, set up the LCD controller, and
+           display it.
+        4) Fetch that kernel uImage and load it into SDRAM.
+        5) Boot the kernel image, with kernel command line arguments passed in.
+
+################
+# installation #
+################
+
+lighting-boot is built using some headers from the Linux kernel.  The 
+install.sh script copies these headers and then uses 'make' to build the 
+bootloader.  First, configure and build an LF1000 kernel for the board that you
+wish to build lightning-boot for (ie: set the TARGET_MACH).  Next, build
+lightning-boot:
+
+./install.sh
+
+If you want a clean build, use the '-c' option:
+
+./install.sh -c
+
+If you want UART debugging:
+
+DEBUG=1 ./install.sh
+
+The install script copies lightning-boot.bin to your $TFTP_PATH.
+
+#############################
+# Development and Debugging #
+#############################
+
+If you want to turn off self-bootstrapping (ex: to test lightning-boot from
+u-boot or via JTAG), remove the SELF_BOOTSTRAP option from CFLAGS in the
+Makefile and then recompile.  Be aware that SELF_BOOTSTRAP must be enabled for
+any build that you intend to write into Flash.
+
+For easier development, a u-boot loading feature is available.  To enable it,
+build lightning-boot with UBOOT_SUPPORT defined.  This can be done by providing
+the '-u' option, for example:
+
+./install.sh -u
+
+Hold down any button on your development board to have lightning-boot load 
+u-boot.bin instead of the kernel.  u-boot.bin must be stored on the first 
+kernel partition as a file (just as with the kernel uImage).  This feature can 
+be removed by building without the UBOOT_SUPPORT flag defined (the default).
+
+Basic profiling is available in DEBUG mode.  Define DEBUG_STOPWATCH, for
+example:
+
+DEBUG=1 DEBUG_STOPWATCH=1 ./install.sh -c
+
+to enable it.  This will turn on stopwatch code provided by the 
+db_stopwatch_start() and db_stopwatch_stop() routines.  See the comments in
+timer.c for details on the timer 'tick' rate.
+
+###############
+# Other Notes #
+###############
+
+See the LinuxDist README for information on variables that should be exported
+for the install script.
